@@ -18,8 +18,8 @@ struct MainTabView: View {
     /// Animation namespace for smooth tab transitions
     @Namespace private var tabAnimation
     
-    /// Finance manager injected from parent view via environment
-    @EnvironmentObject var financeManager: FinanceManager
+    /// Finance manager state with onAppear initialization
+    @State private var financeManager: FinanceManager?
     
     // MARK: - Tab Configuration
     
@@ -79,12 +79,33 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // Main content area with tab-specific views
-            mainContentView
-            
-            // Custom tab bar with glassmorphic styling
-            customTabBar
+            if let financeManager = financeManager {
+                mainContentView
+                    .environmentObject(financeManager)
+                
+                // Custom tab bar with glassmorphic styling
+                customTabBar
+            } else {
+                // ProgressView fallback while FinanceManager initializes
+                VStack {
+                    ProgressView("Initializing...")
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.5)
+                    
+                    Text("Setting up your financial dashboard")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 16)
+                }
+            }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onAppear {
+            // Initialize FinanceManager on first appearance
+            if financeManager == nil {
+                financeManager = FinanceManager()
+            }
+        }
     }
     
     // MARK: - Main Content View
