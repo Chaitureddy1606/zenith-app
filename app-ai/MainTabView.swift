@@ -18,8 +18,8 @@ struct MainTabView: View {
     /// Animation namespace for smooth tab transitions
     @Namespace private var tabAnimation
     
-    /// Finance manager for the finance tab
-    @StateObject private var financeManager = FinanceManager()
+    /// Finance manager for the finance tab - using @State to avoid initialization issues
+    @State private var financeManager: FinanceManager?
     
     // MARK: - Tab Configuration
     
@@ -85,6 +85,12 @@ struct MainTabView: View {
             customTabBar
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onAppear {
+            // Initialize finance manager safely
+            if financeManager == nil {
+                financeManager = FinanceManager()
+            }
+        }
     }
     
     // MARK: - Main Content View
@@ -101,8 +107,17 @@ struct MainTabView: View {
             case .notes:
                 NotesView()
             case .finance:
-                FinanceView()
-                    .environmentObject(financeManager)
+                if let financeManager = financeManager {
+                    FinanceView()
+                        .environmentObject(financeManager)
+                } else {
+                    // Fallback view while finance manager is initializing
+                    VStack {
+                        ProgressView("Initializing Finance...")
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             case .habits:
                 HabitsView()
             case .calendar:

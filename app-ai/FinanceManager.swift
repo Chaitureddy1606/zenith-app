@@ -101,32 +101,65 @@ class FinanceManager: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        loadData()
-        setupSubscriptions()
-        generateInitialData()
-        setupRecurringTransactionTimer()
+        // Initialize with error handling to prevent initialization failures
+        do {
+            try loadData()
+            setupSubscriptions()
+            generateInitialData()
+            setupRecurringTransactionTimer()
+        } catch {
+            // Log error but don't crash the app
+            print("FinanceManager initialization error: \(error)")
+            // Set default values to ensure app continues to work
+            setupDefaultValues()
+        }
     }
     
     deinit {
         recurringTransactionTimer?.invalidate()
     }
+    
+    // MARK: - Default Values Setup
+    
+    /// Sets up default values when initialization fails
+    private func setupDefaultValues() {
+        transactions = []
+        accounts = []
+        budgets = []
+        bills = []
+        savingsGoals = []
+        insights = []
+        recurringTransactions = []
+        taxReports = []
+        sharedInvitations = []
+        bankConnections = []
+        availableCurrencies = Currency.all
+        baseCurrency = .usd
+        summary = FinanceSummary()
+    }
 
     // MARK: - Data Loading & Persistence
     
     /// Loads all financial data from persistent storage
-    private func loadData() {
-        loadTransactions()
-        loadAccounts()
-        loadBudgets()
-        loadBills()
-        loadSavingsGoals()
-        loadInsights()
-        loadRecurringTransactions()
-        loadTaxReports()
-        loadSharedInvitations()
-        loadBankConnections()
-        loadBaseCurrency()
-        updateSummary()
+    private func loadData() throws {
+        do {
+            loadTransactions()
+            loadAccounts()
+            loadBudgets()
+            loadBills()
+            loadSavingsGoals()
+            loadInsights()
+            loadRecurringTransactions()
+            loadTaxReports()
+            loadSharedInvitations()
+            loadBankConnections()
+            loadBaseCurrency()
+            updateSummary()
+        } catch {
+            print("Error loading finance data: \(error)")
+            // Don't rethrow - let the caller handle it
+            throw error
+        }
     }
     
     /// Saves all financial data to persistent storage
@@ -624,9 +657,9 @@ class FinanceManager: ObservableObject {
         
         // Create sample transactions
         let sampleTransactions = [
-            Transaction(amount: 1200.0, type: .income, category: TransactionCategory(name: "Salary", iconName: "dollarsign.circle", color: .green), merchant: "Company Inc", date: Date(), account: sampleAccounts[0], notes: "Monthly salary", currency: .usd, priority: .medium, isRecurring: false, recurringInterval: nil, tags: [], ocrData: nil, isAnomaly: false, sharedWith: nil),
-            Transaction(amount: 85.50, type: .expense, category: TransactionCategory(name: "Food & Dining", iconName: "fork.knife", color: .orange), merchant: "Grocery Store", date: Date().addingTimeInterval(-86400), account: sampleAccounts[0], notes: "Weekly groceries", currency: .usd, priority: .medium, isRecurring: false, recurringInterval: nil, tags: [], ocrData: nil, isAnomaly: false, sharedWith: nil),
-            Transaction(amount: 45.00, type: .expense, category: TransactionCategory(name: "Transportation", iconName: "car.fill", color: .blue), merchant: "Gas Station", date: Date().addingTimeInterval(-172800), account: sampleAccounts[0], notes: "Fuel", currency: .usd, priority: .medium, isRecurring: false, recurringInterval: nil, tags: [], ocrData: nil, isAnomaly: false, sharedWith: nil)
+            Transaction(amount: 1200.0, type: .income, category: TransactionCategory(name: "Salary", iconName: "dollarsign.circle", color: .green), merchant: "Company Inc", date: Date(), account: sampleAccounts[0], notes: "Monthly salary", receiptImageData: nil, location: nil, priority: .medium, isRecurring: false, recurringInterval: nil, tags: [], currency: .usd, ocrData: nil, isAnomaly: false, sharedWith: nil),
+            Transaction(amount: 85.50, type: .expense, category: TransactionCategory(name: "Food & Dining", iconName: "fork.knife", color: .orange), merchant: "Grocery Store", date: Date().addingTimeInterval(-86400), account: sampleAccounts[0], notes: "Weekly groceries", receiptImageData: nil, location: nil, priority: .medium, isRecurring: false, recurringInterval: nil, tags: [], currency: .usd, ocrData: nil, isAnomaly: false, sharedWith: nil),
+            Transaction(amount: 45.00, type: .expense, category: TransactionCategory(name: "Transportation", iconName: "car.fill", color: .blue), merchant: "Gas Station", date: Date().addingTimeInterval(-172800), account: sampleAccounts[0], notes: "Fuel", receiptImageData: nil, location: nil, priority: .medium, isRecurring: false, recurringInterval: nil, tags: [], currency: .usd, ocrData: nil, isAnomaly: false, sharedWith: nil)
         ]
         
         transactions = sampleTransactions
@@ -668,10 +701,16 @@ class FinanceManager: ObservableObject {
             date: Date(),
             account: recurring.account,
             notes: recurring.notes,
-            currency: recurring.currency,
+            receiptImageData: nil,
+            location: nil,
             priority: .medium,
             isRecurring: true,
-            recurringInterval: recurring.interval
+            recurringInterval: recurring.interval,
+            tags: [],
+            currency: recurring.currency,
+            ocrData: nil,
+            isAnomaly: false,
+            sharedWith: nil
         )
         
         addTransaction(transaction)
@@ -867,6 +906,96 @@ class FinanceManager: ObservableObject {
 
     // MARK: - Data Persistence Methods
     
+    /// Loads transactions from storage
+    private func loadTransactions() {
+        if let data = userDefaults.data(forKey: StorageKeys.transactions),
+           let decoded = try? JSONDecoder().decode([Transaction].self, from: data) {
+            transactions = decoded
+        }
+    }
+    
+    /// Saves transactions to storage
+    private func saveTransactions() {
+        if let encoded = try? JSONEncoder().encode(transactions) {
+            userDefaults.set(encoded, forKey: StorageKeys.transactions)
+        }
+    }
+    
+    /// Loads accounts from storage
+    private func loadAccounts() {
+        if let data = userDefaults.data(forKey: StorageKeys.accounts),
+           let decoded = try? JSONDecoder().decode([Account].self, from: data) {
+            accounts = decoded
+        }
+    }
+    
+    /// Saves accounts to storage
+    private func saveAccounts() {
+        if let encoded = try? JSONEncoder().encode(accounts) {
+            userDefaults.set(encoded, forKey: StorageKeys.accounts)
+        }
+    }
+    
+    /// Loads budgets from storage
+    private func loadBudgets() {
+        if let data = userDefaults.data(forKey: StorageKeys.budgets),
+           let decoded = try? JSONDecoder().decode([Budget].self, from: data) {
+            budgets = decoded
+        }
+    }
+    
+    /// Saves budgets to storage
+    private func saveBudgets() {
+        if let encoded = try? JSONEncoder().encode(budgets) {
+            userDefaults.set(encoded, forKey: StorageKeys.budgets)
+        }
+    }
+    
+    /// Loads bills from storage
+    private func loadBills() {
+        if let data = userDefaults.data(forKey: StorageKeys.bills),
+           let decoded = try? JSONDecoder().decode([Bill].self, from: data) {
+            bills = decoded
+        }
+    }
+    
+    /// Saves bills to storage
+    private func saveBills() {
+        if let encoded = try? JSONEncoder().encode(bills) {
+            userDefaults.set(encoded, forKey: StorageKeys.bills)
+        }
+    }
+    
+    /// Loads savings goals from storage
+    private func loadSavingsGoals() {
+        if let data = userDefaults.data(forKey: StorageKeys.savingsGoals),
+           let decoded = try? JSONDecoder().decode([SavingsGoal].self, from: data) {
+            savingsGoals = decoded
+        }
+    }
+    
+    /// Saves savings goals to storage
+    private func saveSavingsGoals() {
+        if let encoded = try? JSONEncoder().encode(savingsGoals) {
+            userDefaults.set(encoded, forKey: StorageKeys.savingsGoals)
+        }
+    }
+    
+    /// Loads insights from storage
+    private func loadInsights() {
+        if let data = userDefaults.data(forKey: StorageKeys.insights),
+           let decoded = try? JSONDecoder().decode([FinancialInsight].self, from: data) {
+            insights = decoded
+        }
+    }
+    
+    /// Saves insights to storage
+    private func saveInsights() {
+        if let encoded = try? JSONEncoder().encode(insights) {
+            userDefaults.set(encoded, forKey: StorageKeys.insights)
+        }
+    }
+    
     /// Loads recurring transactions from storage
     private func loadRecurringTransactions() {
         if let data = userDefaults.data(forKey: StorageKeys.recurringTransactions),
@@ -939,6 +1068,66 @@ class FinanceManager: ObservableObject {
     private func saveBaseCurrency() {
         if let encoded = try? JSONEncoder().encode(baseCurrency) {
             userDefaults.set(encoded, forKey: StorageKeys.baseCurrency)
+        }
+    }
+    
+    // MARK: - Summary Management
+    
+    /// Updates the finance summary with current data
+    private func updateSummary() {
+        let totalBalance = accounts.reduce(0) { $0 + $1.balance }
+        let totalIncome = transactions.filter { $0.type == .income }.reduce(0) { $0 + $0.amount }
+        let totalExpenses = transactions.filter { $0.type == .expense }.reduce(0) { $0 + $0.amount }
+        let totalSavings = savingsGoals.reduce(0) { $0 + $0.currentAmount }
+        
+        summary = FinanceSummary(
+            totalBalance: totalBalance,
+            totalIncome: totalIncome,
+            totalExpenses: totalExpenses,
+            totalSavings: totalSavings,
+            accountCount: accounts.count,
+            transactionCount: transactions.count,
+            budgetCount: budgets.count,
+            lastUpdated: Date()
+        )
+    }
+    
+    // MARK: - Account and Budget Updates
+    
+    /// Updates account balance when a transaction occurs
+    /// - Parameters:
+    ///   - transaction: The transaction affecting the account
+    ///   - isReversal: Whether this is reversing a previous transaction
+    private func updateAccountBalance(for transaction: Transaction, isReversal: Bool = false) {
+        guard let accountIndex = accounts.firstIndex(where: { $0.id == transaction.account.id }) else { return }
+        
+        let multiplier: Decimal = isReversal ? -1 : 1
+        let amount = transaction.amount * multiplier
+        
+        switch transaction.type {
+        case .income:
+            accounts[accountIndex].balance += amount
+        case .expense:
+            accounts[accountIndex].balance -= amount
+        case .transfer:
+            // Handle transfer logic if needed
+            break
+        }
+    }
+    
+    /// Updates budget when a transaction occurs
+    /// - Parameters:
+    ///   - transaction: The transaction affecting the budget
+    ///   - isReversal: Whether this is reversing a previous transaction
+    private func updateBudgets(for transaction: Transaction, isReversal: Bool = false) {
+        guard transaction.type == .expense else { return }
+        
+        let multiplier: Decimal = isReversal ? -1 : 1
+        let amount = transaction.amount * multiplier
+        
+        // Find and update relevant budget
+        if let budgetIndex = budgets.firstIndex(where: { $0.category == transaction.category }) {
+            budgets[budgetIndex].spentAmount += amount
         }
     }
 
