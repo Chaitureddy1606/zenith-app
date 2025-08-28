@@ -18,8 +18,8 @@ struct MainTabView: View {
     /// Animation namespace for smooth tab transitions
     @Namespace private var tabAnimation
     
-    /// Finance manager for the finance tab
-    @StateObject private var financeManager = FinanceManager()
+    /// Finance manager injected from parent view via environment
+    @EnvironmentObject var financeManager: FinanceManager
     
     // MARK: - Tab Configuration
     
@@ -102,7 +102,6 @@ struct MainTabView: View {
                 NotesView()
             case .finance:
                 FinanceView()
-                    .environmentObject(financeManager)
             case .habits:
                 HabitsView()
             case .calendar:
@@ -271,10 +270,12 @@ struct HabitsView: View {
 
 #Preview {
     MainTabView()
+        .environmentObject(FinanceManager.mock)
         .preferredColorScheme(.light)
 }
 
 #Preview("Dark Mode") {
     MainTabView()
+        .environmentObject(FinanceManager.mock)
         .preferredColorScheme(.dark)
 } 

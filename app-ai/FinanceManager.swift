@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import CoreData
 
 /// Main finance manager responsible for all financial operations and data management
 /// Implements ObservableObject for SwiftUI integration and follows MVVM architecture
@@ -97,10 +98,36 @@ class FinanceManager: ObservableObject {
     
     /// Bank sync service
     private let bankSyncService = BankSyncService()
+    
+    // MARK: - Core Data
+    
+    /// Core Data persistent container for data persistence
+    private let container: NSPersistentContainer
+    
+    /// Core Data managed object context
+    var viewContext: NSManagedObjectContext {
+        container.viewContext
+    }
 
     // MARK: - Initialization
     
     init() {
+        // Initialize Core Data container
+        container = NSPersistentContainer(name: "ZenithModel")
+        
+        // Load persistent stores
+        container.loadPersistentStores { _, error in
+            if let error = error {
+                print("Unresolved Core Data error: \(error)")
+                // Fallback to UserDefaults if Core Data fails
+                self.loadData()
+            }
+        }
+        
+        // Reset context to avoid locked DB in previews
+        container.viewContext.reset()
+        
+        // Initialize data and setup
         loadData()
         setupSubscriptions()
         generateInitialData()
@@ -109,6 +136,21 @@ class FinanceManager: ObservableObject {
     
     deinit {
         recurringTransactionTimer?.invalidate()
+        // Save Core Data context before deallocation
+        if viewContext.hasChanges {
+            try? viewContext.save()
+        }
+    }
+    
+    // MARK: - Mock Data for Previews
+    
+    /// Mock FinanceManager for SwiftUI previews
+    /// This prevents database locking issues in preview mode
+    static var mock: FinanceManager {
+        let manager = FinanceManager()
+        // Load mock data for previews
+        manager.loadMockData()
+        return manager
     }
 
     // MARK: - Data Loading & Persistence
@@ -643,6 +685,18 @@ class FinanceManager: ObservableObject {
         // Save the initial data
         saveData()
         updateSummary()
+    }
+    
+    /// Loads mock data for SwiftUI previews
+    /// This prevents database locking issues in preview mode
+    private func loadMockData() {
+        // Clear existing data
+        transactions.removeAll()
+        accounts.removeAll()
+        budgets.removeAll()
+        
+        // Load sample data for previews
+        generateInitialData()
     }
     
     /// Processes recurring transactions
